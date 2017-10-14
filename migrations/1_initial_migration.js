@@ -1,5 +1,5 @@
-var Conference = artifacts.require("./Conference.sol");
+var Migrations = artifacts.require("./Migrations.sol");
 
 module.exports = function(deployer) {
-  deployer.deploy(Conference);
+  deployer.deploy(Migrations);
 };
