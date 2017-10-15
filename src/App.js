@@ -9,7 +9,7 @@ import getWeb3 from './utils/getWeb3'
 const contract = require('truffle-contract')
 const _ = require('lodash');
 
-const TICKET_PRICE = 0.5;
+const TICKET_PRICE = 1;
 
 class App extends Component {
   constructor(props) {
@@ -17,8 +17,7 @@ class App extends Component {
 
     this.state = {
       accounts: [],
-      buyerAddress: '',
-      buyerBalance: '',
+      userAddress: '',
       contract: {},
       contractAddress: '',
       error: {
@@ -60,25 +59,13 @@ class App extends Component {
     c.deployed()
       .then((contract) => {
         this.setState({ contract });
-
-        const ticketPrice = this.state.web3.toWei(0.05, 'ether');
-        const initialBalance = this.state.web3.eth.getBalance(this.state.contract.address).toNumber();
         this.setState({ contractAddress: this.state.contract.address });
+        this.setState({ userAddress: this.state.web3.eth.accounts[0] });
 
-        console.log(`The conference's initial balance is: ${initialBalance}`);
-
-        this.setState({ buyerAddress: this.state.web3.eth.accounts[1] });
-
-        if (!_.isEmpty(this.state.buyerAddress)) {
+        if (!_.isEmpty(this.state.userAddress)) {
           this.updateBalance();
         }
-
-        /*
-        this.buyTicket(contract, accounts[1], ticketPrice);
-        this.buyTicket(contract, accounts[2], ticketPrice);
-        this.refundTicket(contract, accounts);
-        */
-      })
+      });
   }
 
   /**
@@ -96,9 +83,6 @@ class App extends Component {
       console.error(`Unable to buy ticket: ${e}`);
       this.setState({ error: Object.assign({}, this.state.error, { display: true }) });
     }
-
-    const newBalance = this.state.web3.eth.getBalance(contract.address).toNumber();
-    console.log(`After someone bought a ticket it's: ${newBalance}`);
   }
 
   /**
@@ -116,9 +100,6 @@ class App extends Component {
     } catch(e) {
       console.error(`Unable to refund ticket: ${e}`);
     }
-
-    const balance = this.state.web3.eth.getBalance(contract.address).toNumber();
-    console.log(`After a refund it's: ${balance}`);
   }
 
   render() {
@@ -126,16 +107,16 @@ class App extends Component {
     let button;
     let error;
 
-    if (!_.isEmpty(this.state.buyerAddress)) {
+    if (!_.isEmpty(this.state.userAddress)) {
       buyer = (
         <div>
-          <h5>Account Balance: {this.state.buyerBalance} ETH</h5>
+          <h5>Account Balance: {this.state.userBalance} ETH</h5>
           <p>Cost of a Ticket: {TICKET_PRICE} ETH</p>
         </div>
       );
 
       // TODO: Account for gas?
-      if (this.state.buyerBalance > TICKET_PRICE) {
+      if (this.state.userBalance > TICKET_PRICE) {
         button = <Button color="primary" onClick={this.toggle}>Buy a Ticket</Button>;
       } else {
         button = <Button color="danger" disabled={true}>Not Enough ETH</Button>;
@@ -194,17 +175,21 @@ class App extends Component {
   async purchaseTicket() {
     const ticketPrice = this.state.web3.toWei(TICKET_PRICE, 'ether');
 
-    await this.buyTicket(this.state.contract, this.state.accounts[1], ticketPrice);
+    await this.buyTicket(this.state.contract, this.state.userAddress, ticketPrice);
 
     this.toggle();
     this.updateBalance();
   }
 
   updateBalance() {
-    const gweiBalance = this.state.web3.eth.getBalance(this.state.buyerAddress).toNumber()
-    const buyerBalance = this.state.web3.fromWei(gweiBalance, 'ether');
-    console.log(buyerBalance);
-    this.setState({ buyerBalance });
+    this.state.web3.eth.getBalance(this.state.userAddress, (err, result) => {
+      if (err) {
+        console.error(err);
+      } else {
+        const userBalance = this.state.web3.fromWei(result.toNumber(), 'ether');
+        this.setState({ userBalance });
+      }
+    });
   }
 }
 
